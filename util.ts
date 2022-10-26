@@ -4,7 +4,7 @@ import fs from "fs/promises";
 
 const nssdbArg = `sql:${os.homedir()}/.pki/nssdb`;
 
-function process(name: string, params: string[]): Promise<{data: Buffer, error: Buffer}> {
+export function process(name: string, params: string[]): Promise<{data: Buffer, error: Buffer}> {
     return new Promise((resolve, reject) => {
         const stdout: Buffer[] = [];
         const stderr: Buffer[] = [];

@@ -8,7 +8,7 @@ import { getPfxByName as getPfxCertByName, installPfxCert, removePfxCertByName }
 const config: {
     caUrl: string;
     requiredRemainingDays: number;
-} = JSON.parse(readFileSync('./config.json').toString());
+} = JSON.parse(readFileSync(__dirname + '/config.json').toString());
 
 const pfxName = 'tnscm';
 
