@@ -17,34 +17,45 @@ async function renewCert(force: boolean): Promise<number> {
         pfx: await getPfxCertByName(pfxName)
     });
 
-    const remainingReqResult  = await axios.get(config.caUrl + '/remaining', {httpsAgent});
-    if (remainingReqResult.status != 200) {
-        console.log('Getting remainig cert days failed');
-        return -1;
+    try {
+        const remainingReqResult  = await axios.get(config.caUrl + '/remaining', {httpsAgent});
+        if (remainingReqResult.status != 200) {
+            console.log('Getting remainig cert days failed');
+            return -1;
+        }
+
+        if (!force) {
+            const remainingDays = parseInt(remainingReqResult.data);
+            if (remainingDays >= config.requiredRemainingDays) {
+                console.log(`Certificate still valid for ${remainingDays} days, no need to renew.`);
+                return 0;
+            }
+        }
+    } catch (e) {
+        console.error(`Failed to connect to ${config.caUrl}`);
+        return -3;
     }
 
-    if (!force) {
-        const remainingDays = parseInt(remainingReqResult.data);
-        if (remainingDays >= config.requiredRemainingDays) {
-            console.log(`Certificate still valid for ${remainingDays} days, no need to renew.`);
-            return 0;
+    try {
+        const result = await axios.post(config.caUrl + '/renew', {}, {
+            responseType: 'blob',
+            responseEncoding: 'binary',
+            httpsAgent
+        });
+        if (result.status == 200) {
+            if ((<AxiosResponseHeaders> result.headers).getContentType() == 'application/x-pkcs12') {
+                console.log('Received renewed cert');
+                await removePfxCertByName(pfxName);
+                await installPfxCert(result.data);
+                console.log('Installed new cert!');
+                return 0;
+            }
         }
+    } catch (e) {
+        console.error(`Failed to renew cert at ${config.caUrl}`);
+        return -3;
     }
 
-    const result = await axios.post(config.caUrl + '/renew', {}, {
-        responseType: 'blob',
-        responseEncoding: 'binary',
-        httpsAgent
-    });
-    if (result.status == 200) {
-        if ((<AxiosResponseHeaders> result.headers).getContentType() == 'application/x-pkcs12') {
-            console.log('Received renewed cert');
-            await removePfxCertByName(pfxName);
-            await installPfxCert(result.data);
-            console.log('Installed new cert!');
-            return 0;
-        }
-    }
     return -2;
 }
 
